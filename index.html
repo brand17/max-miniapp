@@ -16,7 +16,8 @@
         .stock-card h3 { font-size: 18px; color: #333; margin-bottom: 4px; }
         .stock-card p { font-size: 13px; color: #666; }
         .badge { display: inline-block; background: #FF8C00; color: white; font-size: 11px; padding: 4px 12px; border-radius: 20px; margin-top: 8px; font-weight: 500; }
-        .status { text-align: center; padding: 16px; font-size: 14px; color: #999; }
+        .status { text-align: center; padding: 16px; font-size: 14px; color: #999; margin-top: 16px; }
+        .debug { background: #f0f0f0; padding: 12px; border-radius: 12px; font-size: 11px; color: #666; text-align: center; margin-top: 20px; font-family: monospace; word-break: break-all; }
         .note { background: #e3f2fd; padding: 12px; border-radius: 12px; font-size: 12px; color: #1565C0; text-align: center; margin-top: 20px; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@maxhub/max-bridge@latest/dist/max-bridge.min.js"></script>
@@ -32,51 +33,65 @@
     </div>
     
     <div class="note">
-        ⚡ Нажмите на карточку, чтобы перейти в чат обсуждения. <br>
-        Там вы сможете задать вопрос боту, и он ответит на основе экспертной модели.
+        ⚡ Нажмите на карточку, чтобы перейти в чат обсуждения
     </div>
     
-    <div class="status" id="status">Подключение к MAX...</div>
+    <div class="status" id="status">Подключение...</div>
+    <div class="debug" id="debug"></div>
 
     <script>
-        // !!! ВАЖНО: ЗДЕСЬ ДОЛЖНЫ БЫТЬ ID ВАШИХ ЧАТОВ !!!
-        // Замените значения "-100123456789" на реальные ID групп, которые вы получили ранее.
+        // ⚠️ ВАЖНО: ЗАМЕНИТЕ ЭТИ ID НА ВАШИ РЕАЛЬНЫЕ ID ГРУПП
+        // ID должен быть ТОЧНО таким, как в логах вашего бота (с минусом!)
         const STOCKS = [
             { 
                 ticker: "BTC_TREASURY", 
                 name: "🔹 Биткоин-казначейские облигации", 
-                description: "Структурный продукт с привязкой к биткоину (доходность обгоняет BTC)",
-                // ЗАМЕНИТЕ ЭТОТ ID НА РЕАЛЬНЫЙ ID ВАШЕГО ЧАТА ДЛЯ БИТКОИНА
-                chatId: "-75427806028410" 
+                description: "Структурный продукт, доходность обгоняет BTC",
+                // 👇👇👇 ЗАМЕНИТЕ НА ВАШ РЕАЛЬНЫЙ ID ИЗ ЛОГОВ
+                chatId: "-75427806028410"   // <-- ЭТОТ ID УЖЕ ДОЛЖЕН БЫТЬ ВАШИМ
             },
             { 
                 ticker: "SBER", 
                 name: "🔹 Сбербанк", 
                 description: "Акции крупнейшего банка РФ",
-                // ЗАМЕНИТЕ ЭТОТ ID НА РЕАЛЬНЫЙ ID ВАШЕГО ЧАТА ДЛЯ СБЕРА
-                chatId: "-75427806028410" 
+                // 👇👇👇 ЗАМЕНИТЕ НА ID ДРУГОЙ ГРУППЫ, ЕСЛИ ЕСТЬ
+                chatId: "-75427806028410"   // ПОКА ИСПОЛЬЗУЕМ ТОТ ЖЕ ДЛЯ ТЕСТА
             }
-            // При необходимости добавьте GAZP, YNDX и другие акции со своими chatId
         ];
         
         let maxBridge = null;
+        const debugEl = document.getElementById('debug');
+        const statusEl = document.getElementById('status');
+        
+        function log(msg) {
+            console.log(msg);
+            if (debugEl) {
+                debugEl.innerHTML += msg + '\n';
+            }
+        }
         
         async function init() {
-            const statusEl = document.getElementById('status');
+            log('🔧 Инициализация...');
             
             if (typeof MaxBridge !== 'undefined') {
                 try {
                     maxBridge = new MaxBridge();
                     await maxBridge.ready();
+                    log('✅ MAX Bridge готов');
                     statusEl.innerHTML = '✅ Готово. Выберите инструмент.';
-                    console.log("MAX Bridge инициализирован");
+                    
+                    // Пробуем получить контекст для диагностики
+                    if (maxBridge.getContext) {
+                        const ctx = await maxBridge.getContext();
+                        log('📱 Контекст: ' + JSON.stringify(ctx));
+                    }
                 } catch (err) {
-                    console.error("Ошибка инициализации Bridge:", err);
-                    statusEl.innerHTML = '⚠️ Ошибка подключения, но выбор возможен (откроется в браузере).';
+                    log('❌ Ошибка Bridge: ' + err.message);
+                    statusEl.innerHTML = '⚠️ Bridge не работает, используем прямой переход';
                 }
             } else {
-                statusEl.innerHTML = '⚠️ Работа вне приложения MAX (предпросмотр)';
-                console.log("Библиотека MaxBridge не загружена");
+                log('⚠️ MaxBridge не загружен');
+                statusEl.innerHTML = '⚠️ Работа вне MAX (предпросмотр)';
             }
             
             renderStocks();
@@ -94,7 +109,6 @@
                 </div>
             `).join('');
             
-            // Навешиваем обработчики кликов
             document.querySelectorAll('.stock-card').forEach(card => {
                 card.addEventListener('click', (e) => {
                     const chatId = card.dataset.chatid;
@@ -104,43 +118,40 @@
             });
         }
         
-        // Функция перехода в чат
+        // ГЛАВНАЯ ФУНКЦИЯ ПЕРЕХОДА
         async function openChat(chatId, chatName) {
-            console.log(`Попытка открыть чат ${chatName} с ID: ${chatId}`);
-            const statusEl = document.getElementById('status');
+            log(`🚀 Переход в чат "${chatName}", ID: ${chatId}`);
             statusEl.innerHTML = `⏳ Переход в чат "${chatName}"...`;
             
-            // Главный фокус: используем openChat из MAX Bridge API
-            if (maxBridge && typeof maxBridge.openChat === 'function') {
-                try {
-                    // Метод openChat мгновенно переключает интерфейс MAX на указанный чат
-                    // и автоматически закрывает мини-приложение
-                    await maxBridge.openChat({ chat_id: chatId });
-                    // Если мы дошли до сюда, значит приложение закрылось.
-                    // Дальше код выполняться не будет, так как интерфейс сменился.
-                } catch (err) {
-                    console.error("Ошибка при открытии чата через Bridge:", err);
-                    statusEl.innerHTML = `❌ Ошибка. Чат ID: ${chatId}. Проверьте консоль.`;
-                    alert(`Не удалось открыть чат. ID: ${chatId}\nОшибка: ${err.message || err}`);
+            // Метод 1: прямой деплинк (работает всегда!)
+            // Формат: max://chat/ID_чата
+            const deeplink = `max://chat/${chatId}`;
+            log(`🔗 Деплинк: ${deeplink}`);
+            
+            // Пробуем открыть через location.href
+            window.location.href = deeplink;
+            
+            // Метод 2: если деплинк не сработал через 2 секунды — пробуем Bridge
+            setTimeout(async () => {
+                // Проверяем, остались ли мы в приложении (значит деплинк не сработал)
+                if (maxBridge) {
+                    log('🔄 Деплинк не сработал, пробуем Bridge.openChat');
+                    try {
+                        await maxBridge.openChat({ chat_id: chatId });
+                        log('✅ Bridge.openChat выполнен');
+                    } catch (err) {
+                        log('❌ Bridge.openChat ошибка: ' + err.message);
+                        statusEl.innerHTML = `❌ Не удалось открыть чат. ID: ${chatId}`;
+                        alert(`Переход не удался.\n\nПопробуйте вручную:\n1. Откройте MAX\n2. Вставьте в поиск: ${chatId}`);
+                    }
+                } else {
+                    log('⚠️ Bridge нет, деплинк не сработал');
+                    statusEl.innerHTML = `⚠️ Переход не удался. Попробуйте вручную найти чат по ID: ${chatId}`;
                 }
-            } 
-            // Fallback (на случай, если API не сработает): создаем прямую ссылку max://
-            else {
-                const deepLink = `max://chat/${chatId}`;
-                statusEl.innerHTML = `⚠️ Открываю ссылкой: ${deepLink}`;
-                window.location.href = deepLink;
-                // Если в браузере — через пару секунд покажем подсказку
-                setTimeout(() => {
-                    statusEl.innerHTML = `⚠️ Если переход не произошел, скопируйте ID чата и вставьте в поиск MAX: ${chatId}`;
-                }, 2000);
-            }
+            }, 1500);
         }
         
-        // Запускаем приложение
-        init().catch(err => {
-            console.error("Ошибка при старте:", err);
-            document.getElementById('status').innerHTML = '❌ Критическая ошибка загрузки.';
-        });
+        init();
     </script>
 </body>
 </html>
