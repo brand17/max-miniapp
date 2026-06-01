@@ -20,7 +20,8 @@
         .debug { background: #f0f0f0; padding: 12px; border-radius: 12px; font-size: 11px; color: #666; text-align: center; margin-top: 20px; font-family: monospace; word-break: break-all; }
         .note { background: #e3f2fd; padding: 12px; border-radius: 12px; font-size: 12px; color: #1565C0; text-align: center; margin-top: 20px; }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/@maxhub/max-bridge@latest/dist/max-bridge.min.js"></script>
+    <!-- ✅ ПРАВИЛЬНОЕ ПОДКЛЮЧЕНИЕ ПО ДОКУМЕНТАЦИИ MAX -->
+    <script src="https://st.max.ru/js/max-web-app.js"></script>
 </head>
 <body>
     <div class="header">
@@ -40,26 +41,22 @@
     <div class="debug" id="debug"></div>
 
     <script>
-        // ⚠️ ВАЖНО: ЗАМЕНИТЕ ЭТИ ID НА ВАШИ РЕАЛЬНЫЕ ID ГРУПП
-        // ID должен быть ТОЧНО таким, как в логах вашего бота (с минусом!)
+        // ⚠️ ВАШ РЕАЛЬНЫЙ ID ГРУППЫ (из логов бота)
         const STOCKS = [
             { 
                 ticker: "BTC_TREASURY", 
                 name: "🔹 Биткоин-казначейские облигации", 
                 description: "Структурный продукт, доходность обгоняет BTC",
-                // 👇👇👇 ЗАМЕНИТЕ НА ВАШ РЕАЛЬНЫЙ ID ИЗ ЛОГОВ
-                chatId: "-75427806028410"   // <-- ЭТОТ ID УЖЕ ДОЛЖЕН БЫТЬ ВАШИМ
+                chatId: "-75427806028410"
             },
             { 
                 ticker: "SBER", 
                 name: "🔹 Сбербанк", 
                 description: "Акции крупнейшего банка РФ",
-                // 👇👇👇 ЗАМЕНИТЕ НА ID ДРУГОЙ ГРУППЫ, ЕСЛИ ЕСТЬ
-                chatId: "-75427806028410"   // ПОКА ИСПОЛЬЗУЕМ ТОТ ЖЕ ДЛЯ ТЕСТА
+                chatId: "-75427806028410"
             }
         ];
         
-        let maxBridge = null;
         const debugEl = document.getElementById('debug');
         const statusEl = document.getElementById('status');
         
@@ -70,31 +67,23 @@
             }
         }
         
-        async function init() {
-            log('🔧 Инициализация...');
+        // Функция перехода в чат через деплинк (самый надёжный способ)
+        function openChat(chatId, chatName) {
+            log(`🚀 Переход в чат "${chatName}", ID: ${chatId}`);
+            statusEl.innerHTML = `⏳ Переход в чат "${chatName}"...`;
             
-            if (typeof MaxBridge !== 'undefined') {
-                try {
-                    maxBridge = new MaxBridge();
-                    await maxBridge.ready();
-                    log('✅ MAX Bridge готов');
-                    statusEl.innerHTML = '✅ Готово. Выберите инструмент.';
-                    
-                    // Пробуем получить контекст для диагностики
-                    if (maxBridge.getContext) {
-                        const ctx = await maxBridge.getContext();
-                        log('📱 Контекст: ' + JSON.stringify(ctx));
-                    }
-                } catch (err) {
-                    log('❌ Ошибка Bridge: ' + err.message);
-                    statusEl.innerHTML = '⚠️ Bridge не работает, используем прямой переход';
-                }
-            } else {
-                log('⚠️ MaxBridge не загружен');
-                statusEl.innerHTML = '⚠️ Работа вне MAX (предпросмотр)';
-            }
+            // Формируем деплинк MAX
+            const deeplink = `max://chat/${chatId}`;
+            log(`🔗 Деплинк: ${deeplink}`);
             
-            renderStocks();
+            // Пытаемся открыть через window.location
+            window.location.href = deeplink;
+            
+            // Если через 2 секунды не ушли — показываем ID для ручного перехода
+            setTimeout(() => {
+                statusEl.innerHTML = `⚠️ Если переход не произошёл, введите в поиске MAX: ${chatId}`;
+                log(`⚠️ Ручной переход: введите ID ${chatId} в поиск MAX`);
+            }, 2000);
         }
         
         function renderStocks() {
@@ -110,7 +99,7 @@
             `).join('');
             
             document.querySelectorAll('.stock-card').forEach(card => {
-                card.addEventListener('click', (e) => {
+                card.addEventListener('click', () => {
                     const chatId = card.dataset.chatid;
                     const name = card.dataset.name;
                     openChat(chatId, name);
@@ -118,40 +107,24 @@
             });
         }
         
-        // ГЛАВНАЯ ФУНКЦИЯ ПЕРЕХОДА
-        async function openChat(chatId, chatName) {
-            log(`🚀 Переход в чат "${chatName}", ID: ${chatId}`);
-            statusEl.innerHTML = `⏳ Переход в чат "${chatName}"...`;
+        // Инициализация
+        function init() {
+            log('🔧 Инициализация...');
             
-            // Метод 1: прямой деплинк (работает всегда!)
-            // Формат: max://chat/ID_чата
-            const deeplink = `max://chat/${chatId}`;
-            log(`🔗 Деплинк: ${deeplink}`);
+            // Проверяем, доступен ли WebApp (новое API MAX)
+            if (typeof window.WebApp !== 'undefined') {
+                log('✅ MAX WebApp готов');
+                statusEl.innerHTML = '✅ Готово. Выберите инструмент.';
+            } else {
+                log('⚠️ WebApp не загружен, но переход через деплинк будет работать');
+                statusEl.innerHTML = '✅ Выберите инструмент (переход через ссылку)';
+            }
             
-            // Пробуем открыть через location.href
-            window.location.href = deeplink;
-            
-            // Метод 2: если деплинк не сработал через 2 секунды — пробуем Bridge
-            setTimeout(async () => {
-                // Проверяем, остались ли мы в приложении (значит деплинк не сработал)
-                if (maxBridge) {
-                    log('🔄 Деплинк не сработал, пробуем Bridge.openChat');
-                    try {
-                        await maxBridge.openChat({ chat_id: chatId });
-                        log('✅ Bridge.openChat выполнен');
-                    } catch (err) {
-                        log('❌ Bridge.openChat ошибка: ' + err.message);
-                        statusEl.innerHTML = `❌ Не удалось открыть чат. ID: ${chatId}`;
-                        alert(`Переход не удался.\n\nПопробуйте вручную:\n1. Откройте MAX\n2. Вставьте в поиск: ${chatId}`);
-                    }
-                } else {
-                    log('⚠️ Bridge нет, деплинк не сработал');
-                    statusEl.innerHTML = `⚠️ Переход не удался. Попробуйте вручную найти чат по ID: ${chatId}`;
-                }
-            }, 1500);
+            renderStocks();
         }
         
-        init();
+        // Запускаем после загрузки страницы
+        window.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
