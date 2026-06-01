@@ -3,210 +3,143 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Инвестиционный ассистент</title>
+    <title>Выбор инструмента</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background: #f5f5f5;
-            padding: 16px;
-        }
-        
-        .header {
-            background: linear-gradient(135deg, #FFB347 0%, #FF8C00 100%);
-            margin: -16px -16px 16px -16px;
-            padding: 24px 16px;
-            border-radius: 0 0 24px 24px;
-            color: white;
-        }
-        
-        .header h1 {
-            font-size: 24px;
-            margin-bottom: 8px;
-        }
-        
-        .header p {
-            font-size: 14px;
-            opacity: 0.9;
-        }
-        
-        .stocks-list {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-        
-        .stock-card {
-            background: white;
-            border-radius: 16px;
-            padding: 16px;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            border: 1px solid #e0e0e0;
-        }
-        
-        .stock-card:active {
-            transform: scale(0.98);
-        }
-        
-        .stock-card h3 {
-            font-size: 18px;
-            color: #333;
-            margin-bottom: 4px;
-        }
-        
-        .stock-card p {
-            font-size: 13px;
-            color: #666;
-        }
-        
-        .badge {
-            display: inline-block;
-            background: #FF8C00;
-            color: white;
-            font-size: 11px;
-            padding: 2px 8px;
-            border-radius: 12px;
-            margin-top: 8px;
-        }
-        
-        .message-input {
-            margin-top: 20px;
-            background: white;
-            border-radius: 16px;
-            padding: 12px;
-            border: 1px solid #e0e0e0;
-        }
-        
-        .message-input input {
-            width: 100%;
-            border: none;
-            padding: 12px;
-            font-size: 16px;
-            border-radius: 12px;
-            background: #f5f5f5;
-        }
-        
-        .message-input button {
-            width: 100%;
-            margin-top: 12px;
-            background: #FF8C00;
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #f5f5f5; padding: 16px; }
+        .header { background: linear-gradient(135deg, #FFB347 0%, #FF8C00 100%); margin: -16px -16px 16px -16px; padding: 24px 16px; border-radius: 0 0 24px 24px; color: white; }
+        .header h1 { font-size: 24px; margin-bottom: 8px; }
+        .header p { font-size: 14px; opacity: 0.9; }
+        .stocks-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+        .stock-card { background: white; border-radius: 16px; padding: 16px; cursor: pointer; transition: transform 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e0e0e0; }
+        .stock-card:active { transform: scale(0.98); background-color: #f9f9f9; }
+        .stock-card h3 { font-size: 18px; color: #333; margin-bottom: 4px; }
+        .stock-card p { font-size: 13px; color: #666; }
+        .badge { display: inline-block; background: #FF8C00; color: white; font-size: 11px; padding: 4px 12px; border-radius: 20px; margin-top: 8px; font-weight: 500; }
+        .status { text-align: center; padding: 16px; font-size: 14px; color: #999; }
+        .note { background: #e3f2fd; padding: 12px; border-radius: 12px; font-size: 12px; color: #1565C0; text-align: center; margin-top: 20px; }
     </style>
-    <!-- Подключаем MAX Bridge для взаимодействия с мессенджером -->
     <script src="https://cdn.jsdelivr.net/npm/@maxhub/max-bridge@latest/dist/max-bridge.min.js"></script>
 </head>
 <body>
     <div class="header">
         <h1>📊 Инвестиционный ассистент</h1>
-        <p>Выберите ценную бумагу для анализа</p>
+        <p>Выберите инструмент для входа в чат анализа</p>
     </div>
     
     <div class="stocks-list" id="stocksList">
-        <!-- Список будет заполнен через JS -->
         <div style="text-align: center; padding: 40px;">Загрузка...</div>
     </div>
     
-    <div class="message-input">
-        <input type="text" id="questionInput" placeholder="Или задайте вопрос напрямую..." />
-        <button id="sendBtn">Отправить</button>
+    <div class="note">
+        ⚡ Нажмите на карточку, чтобы перейти в чат обсуждения. <br>
+        Там вы сможете задать вопрос боту, и он ответит на основе экспертной модели.
     </div>
+    
+    <div class="status" id="status">Подключение к MAX...</div>
 
     <script>
-        // Список ценных бумаг (синхронизирован с config.js вашего бота)
+        // !!! ВАЖНО: ЗДЕСЬ ДОЛЖНЫ БЫТЬ ID ВАШИХ ЧАТОВ !!!
+        // Замените значения "-100123456789" на реальные ID групп, которые вы получили ранее.
         const STOCKS = [
-            { ticker: "SBER", name: "Сбербанк", description: "Акции крупнейшего банка РФ" },
-            { ticker: "GAZP", name: "Газпром", description: "Энергетический гигант" },
-            { ticker: "YNDX", name: "Яндекс", description: "IT-компания, поисковик, e-commerce" },
-            { ticker: "BTC", name: "Биткоин-казначейские облигации", description: "Структурный продукт с привязкой к биткоину" }
+            { 
+                ticker: "BTC_TREASURY", 
+                name: "🔹 Биткоин-казначейские облигации", 
+                description: "Структурный продукт с привязкой к биткоину (доходность обгоняет BTC)",
+                // ЗАМЕНИТЕ ЭТОТ ID НА РЕАЛЬНЫЙ ID ВАШЕГО ЧАТА ДЛЯ БИТКОИНА
+                chatId: "-75427806028410" 
+            },
+            { 
+                ticker: "SBER", 
+                name: "🔹 Сбербанк", 
+                description: "Акции крупнейшего банка РФ",
+                // ЗАМЕНИТЕ ЭТОТ ID НА РЕАЛЬНЫЙ ID ВАШЕГО ЧАТА ДЛЯ СБЕРА
+                chatId: "-75427806028410" 
+            }
+            // При необходимости добавьте GAZP, YNDX и другие акции со своими chatId
         ];
         
-        // Инициализация MAX Bridge
         let maxBridge = null;
         
-        async function initMaxBridge() {
+        async function init() {
+            const statusEl = document.getElementById('status');
+            
             if (typeof MaxBridge !== 'undefined') {
-                maxBridge = new MaxBridge();
-                await maxBridge.ready();
-                console.log("MAX Bridge готов");
+                try {
+                    maxBridge = new MaxBridge();
+                    await maxBridge.ready();
+                    statusEl.innerHTML = '✅ Готово. Выберите инструмент.';
+                    console.log("MAX Bridge инициализирован");
+                } catch (err) {
+                    console.error("Ошибка инициализации Bridge:", err);
+                    statusEl.innerHTML = '⚠️ Ошибка подключения, но выбор возможен (откроется в браузере).';
+                }
             } else {
-                console.log("Работаем вне MAX (локальная разработка)");
+                statusEl.innerHTML = '⚠️ Работа вне приложения MAX (предпросмотр)';
+                console.log("Библиотека MaxBridge не загружена");
             }
+            
+            renderStocks();
         }
         
-        // Отправка сообщения в чат с ботом
-        async function sendToChat(text) {
-            if (maxBridge) {
-                // Открываем текущий чат с предзаполненным сообщением
-                // Пользователь сам нажмёт "Отправить"
-                await maxBridge.openChat({
-                    text: text,           // Предзаполненный текст
-                    chat_id: -75427806028410        // null = текущий чат с ботом
-                });
-                maxBridge.close();       // Закрываем мини-приложение
-            } else {
-                alert("Вы выбрали: " + text);
-            }
-        }        
-        // Заполнение списка бумаг
         function renderStocks() {
             const container = document.getElementById('stocksList');
+            if (!container) return;
+            
             container.innerHTML = STOCKS.map(stock => `
-                <div class="stock-card" data-ticker="${stock.ticker}" data-name="${stock.name}">
+                <div class="stock-card" data-chatid="${stock.chatId}" data-name="${stock.name}">
                     <h3>${stock.name}</h3>
                     <p>${stock.description}</p>
-                    <span class="badge">Выбрать</span>
+                    <span class="badge">Войти в чат →</span>
                 </div>
             `).join('');
             
-            // Добавляем обработчики кликов
+            // Навешиваем обработчики кликов
             document.querySelectorAll('.stock-card').forEach(card => {
-                card.addEventListener('click', () => {
+                card.addEventListener('click', (e) => {
+                    const chatId = card.dataset.chatid;
                     const name = card.dataset.name;
-                    const ticker = card.dataset.ticker;
-                    
-                    // Отправляем сообщение в чат с выбором бумаги
-                    sendToChat(`Выбрана бумага: ${name} (${ticker})`);
+                    openChat(chatId, name);
                 });
             });
         }
         
-        // Отправка текстового вопроса
-        document.getElementById('sendBtn')?.addEventListener('click', () => {
-            const input = document.getElementById('questionInput');
-            const text = input.value.trim();
-            if (text) {
-                sendToChat(text);
-                input.value = '';
-            }
-        });
-        
-        document.getElementById('questionInput')?.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                const text = e.target.value.trim();
-                if (text) {
-                    sendToChat(text);
-                    e.target.value = '';
+        // Функция перехода в чат
+        async function openChat(chatId, chatName) {
+            console.log(`Попытка открыть чат ${chatName} с ID: ${chatId}`);
+            const statusEl = document.getElementById('status');
+            statusEl.innerHTML = `⏳ Переход в чат "${chatName}"...`;
+            
+            // Главный фокус: используем openChat из MAX Bridge API
+            if (maxBridge && typeof maxBridge.openChat === 'function') {
+                try {
+                    // Метод openChat мгновенно переключает интерфейс MAX на указанный чат
+                    // и автоматически закрывает мини-приложение
+                    await maxBridge.openChat({ chat_id: chatId });
+                    // Если мы дошли до сюда, значит приложение закрылось.
+                    // Дальше код выполняться не будет, так как интерфейс сменился.
+                } catch (err) {
+                    console.error("Ошибка при открытии чата через Bridge:", err);
+                    statusEl.innerHTML = `❌ Ошибка. Чат ID: ${chatId}. Проверьте консоль.`;
+                    alert(`Не удалось открыть чат. ID: ${chatId}\nОшибка: ${err.message || err}`);
                 }
+            } 
+            // Fallback (на случай, если API не сработает): создаем прямую ссылку max://
+            else {
+                const deepLink = `max://chat/${chatId}`;
+                statusEl.innerHTML = `⚠️ Открываю ссылкой: ${deepLink}`;
+                window.location.href = deepLink;
+                // Если в браузере — через пару секунд покажем подсказку
+                setTimeout(() => {
+                    statusEl.innerHTML = `⚠️ Если переход не произошел, скопируйте ID чата и вставьте в поиск MAX: ${chatId}`;
+                }, 2000);
             }
-        });
+        }
         
-        // Запуск
-        initMaxBridge().then(() => {
-            renderStocks();
+        // Запускаем приложение
+        init().catch(err => {
+            console.error("Ошибка при старте:", err);
+            document.getElementById('status').innerHTML = '❌ Критическая ошибка загрузки.';
         });
     </script>
 </body>
