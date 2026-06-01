@@ -150,16 +150,17 @@
         // Отправка сообщения в чат с ботом
         async function sendToChat(text) {
             if (maxBridge) {
-                // В мини-приложении — отправляем через Bridge
-                await maxBridge.sendMessage(text);
-                // Закрываем мини-приложение после отправки
-                maxBridge.close();
+                // Открываем текущий чат с предзаполненным сообщением
+                // Пользователь сам нажмёт "Отправить"
+                await maxBridge.openChat({
+                    text: text,           // Предзаполненный текст
+                    chat_id: null        // null = текущий чат с ботом
+                });
+                maxBridge.close();       // Закрываем мини-приложение
             } else {
-                // В браузере — просто показываем
-                alert("Вы выбрали: " + text + "\n(В MAX это отправится в чат)");
+                alert("Вы выбрали: " + text);
             }
-        }
-        
+        }        
         // Заполнение списка бумаг
         function renderStocks() {
             const container = document.getElementById('stocksList');
