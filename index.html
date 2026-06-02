@@ -17,7 +17,6 @@
         .stock-card p { font-size: 13px; color: #666; }
         .badge { display: inline-block; background: #FF8C00; color: white; font-size: 11px; padding: 4px 12px; border-radius: 20px; margin-top: 8px; font-weight: 500; }
         .status { text-align: center; padding: 16px; font-size: 14px; margin-top: 16px; }
-        .loading { background: #fff3cd; color: #856404; border-radius: 12px; }
         .success { background: #d4edda; color: #155724; border-radius: 12px; }
         .error { background: #f8d7da; color: #721c24; border-radius: 12px; }
         .note { background: #e3f2fd; padding: 12px; border-radius: 12px; font-size: 12px; color: #1565C0; text-align: center; margin-top: 20px; }
@@ -41,19 +40,19 @@
     <div class="status" id="status">Загрузка...</div>
 
     <script>
-        // ⚠️ ВАЖНО: ЗАМЕНИТЕ ЭТИ ID НА ВАШИ РЕАЛЬНЫЕ ID ЧАТОВ
+        // !!! ВАЖНО: ЗАМЕНИТЕ ЭТИ ССЫЛКИ НА ВАШИ РЕАЛЬНЫЕ ПРИГЛАСИТЕЛЬНЫЕ ССЫЛКИ !!!
         const STOCKS = [
             { 
                 ticker: "BTC_TREASURY", 
                 name: "🔹 Биткоин-казначейские облигации", 
                 description: "Структурный продукт, доходность обгоняет BTC",
-                chatId: "-75427806028410"  // ← ВАШ ID ИЗ ЛОГОВ
+                inviteLink: "https://max.ru/join/QmkCfF0r5RPkmgw4UCANLs7tP-smXEl18XBQR43rnUU" // <-- ВСТАВЬТЕ ВАШУ ССЫЛКУ СЮДА
             },
             { 
                 ticker: "SBER", 
                 name: "🔹 Сбербанк", 
                 description: "Акции крупнейшего банка РФ",
-                chatId: "-75427806028410"  // ← ПОКА ИСПОЛЬЗУЕМ ТОТ ЖЕ ДЛЯ ТЕСТА
+                inviteLink: "https://max.ru/join/QmkCfF0r5RPkmgw4UCANLs7tP-smXEl18XBQR43rnUU" // <-- И СЮДА
             }
         ];
         
@@ -65,48 +64,18 @@
             statusEl.className = `status ${type}`;
         }
         
-        // ГЛАВНАЯ ФУНКЦИЯ — ОТКРЫТИЕ ЧАТА
-        async function openChat(chatId, chatName) {
-            log(`🔄 Открываю чат "${chatName}"...`, 'loading');
+        // ГЛАВНАЯ ФУНКЦИЯ — ОТКРЫТИЕ ЧАТА ПО ПРИГЛАСИТЕЛЬНОЙ ССЫЛКЕ
+        async function openChat(inviteLink, chatName) {
+            log(`🔄 Открываю чат "${chatName}"...`, 'success');
             
-            // Метод 1: Используем официальный MAX Bridge API
-            if (typeof window.WebApp !== 'undefined') {
-                try {
-                    // Пытаемся открыть чат через WebApp
-                    if (window.WebApp.openChat) {
-                        await window.WebApp.openChat({ chat_id: chatId });
-                        log(`✅ Переход в чат "${chatName}" выполнен`, 'success');
-                        return;
-                    }
-                    
-                    // Альтернативный метод: открываем через деплинк
-                    const deeplink = `max://chat/${chatId}`;
-                    window.location.href = deeplink;
-                    log(`🔗 Переход по ссылке: ${deeplink}`, 'loading');
-                    
-                    // Проверяем через 2 секунды, не застряли ли
-                    setTimeout(() => {
-                        log(`⚠️ Если переход не произошёл, введите ID вручную: ${chatId}`, 'error');
-                    }, 2000);
-                    
-                } catch (err) {
-                    log(`❌ Ошибка: ${err.message}`, 'error');
-                    // Fallback: показываем ID для ручного ввода
-                    fallbackOpen(chatId);
-                }
-            } else {
-                log('⚠️ WebApp не загружен, использую резервный метод', 'error');
-                fallbackOpen(chatId);
-            }
-        }
-        
-        // Резервный метод — показываем ID и копируем в буфер
-        function fallbackOpen(chatId) {
-            navigator.clipboard.writeText(chatId).then(() => {
-                log(`📋 ID чата скопирован: ${chatId}\nВставьте его в поиск MAX и перейдите в чат`, 'success');
-            }).catch(() => {
-                log(`⚠️ Скопируйте ID вручную: ${chatId} и вставьте в поиск MAX`, 'error');
-            });
+            // Самый простой и надёжный способ: перенаправляем окно на пригласительную ссылку
+            // MAX перехватит этот переход и откроет чат внутри приложения
+            window.location.href = inviteLink;
+            
+            // Резервный вариант на случай, если переход не произошёл
+            setTimeout(() => {
+                log(`⚠️ Если переход не произошёл, откройте ссылку вручную: ${inviteLink}`, 'error');
+            }, 2000);
         }
         
         function renderStocks() {
@@ -114,7 +83,7 @@
             if (!container) return;
             
             container.innerHTML = STOCKS.map(stock => `
-                <div class="stock-card" data-chatid="${stock.chatId}" data-name="${stock.name}">
+                <div class="stock-card" data-link="${stock.inviteLink}" data-name="${stock.name}">
                     <h3>${stock.name}</h3>
                     <p>${stock.description}</p>
                     <span class="badge">Перейти в чат →</span>
@@ -123,23 +92,16 @@
             
             document.querySelectorAll('.stock-card').forEach(card => {
                 card.addEventListener('click', () => {
-                    const chatId = card.dataset.chatid;
+                    const inviteLink = card.dataset.link;
                     const name = card.dataset.name;
-                    openChat(chatId, name);
+                    openChat(inviteLink, name);
                 });
             });
         }
         
         // Инициализация
         function init() {
-            log('🔧 Проверка подключения к MAX...', 'loading');
-            
-            if (typeof window.WebApp !== 'undefined') {
-                log('✅ MINI APP: Выберите инструмент для перехода в чат', 'success');
-            } else {
-                log('⚠️ Работа вне MAX, переход может не сработать', 'error');
-            }
-            
+            log('🔧 Проверка подключения...', 'success');
             renderStocks();
         }
         
