@@ -20,13 +20,12 @@
         .debug { background: #f0f0f0; padding: 12px; border-radius: 12px; font-size: 11px; color: #666; text-align: center; margin-top: 20px; font-family: monospace; word-break: break-all; }
         .note { background: #e3f2fd; padding: 12px; border-radius: 12px; font-size: 12px; color: #1565C0; text-align: center; margin-top: 20px; }
     </style>
-    <!-- ✅ ПРАВИЛЬНОЕ ПОДКЛЮЧЕНИЕ ПО ДОКУМЕНТАЦИИ MAX -->
     <script src="https://st.max.ru/js/max-web-app.js"></script>
 </head>
 <body>
     <div class="header">
         <h1>📊 Инвестиционный ассистент</h1>
-        <p>Выберите инструмент для входа в чат анализа</p>
+        <p>Выберите инструмент для анализа</p>
     </div>
     
     <div class="stocks-list" id="stocksList">
@@ -34,26 +33,19 @@
     </div>
     
     <div class="note">
-        ⚡ Нажмите на карточку, чтобы перейти в чат обсуждения
+        ⚡ Нажмите на карточку, чтобы начать обсуждение.
     </div>
     
     <div class="status" id="status">Подключение...</div>
     <div class="debug" id="debug"></div>
 
     <script>
-        // ⚠️ ВАШ РЕАЛЬНЫЙ ID ГРУППЫ (из логов бота)
         const STOCKS = [
             { 
                 ticker: "BTC_TREASURY", 
                 name: "🔹 Биткоин-казначейские облигации", 
                 description: "Структурный продукт, доходность обгоняет BTC",
-                chatId: "-75427806028410"
-            },
-            { 
-                ticker: "SBER", 
-                name: "🔹 Сбербанк", 
-                description: "Акции крупнейшего банка РФ",
-                chatId: "-75427806028410"
+                chatName: "btc_treasury_chat"
             }
         ];
         
@@ -67,23 +59,42 @@
             }
         }
         
-        // Функция перехода в чат через деплинк (самый надёжный способ)
-        function openChat(chatId, chatName) {
-            log(`🚀 Переход в чат "${chatName}", ID: ${chatId}`);
-            statusEl.innerHTML = `⏳ Переход в чат "${chatName}"...`;
+        // Новая логика: отправляем сообщение обратно в чат
+        async function selectStock(stockName, stockTicker) {
+            log(`📤 Отправляем выбор: ${stockName}`);
+            statusEl.innerHTML = `⏳ Отправляю запрос в чат...`;
             
-            // Формируем деплинк MAX
-            const deeplink = `max://chat/${chatId}`;
-            log(`🔗 Деплинк: ${deeplink}`);
+            const messageText = `Выбрана бумага: ${stockName} (${stockTicker})`;
             
-            // Пытаемся открыть через window.location
-            window.location.href = deeplink;
-            
-            // Если через 2 секунды не ушли — показываем ID для ручного перехода
-            setTimeout(() => {
-                statusEl.innerHTML = `⚠️ Если переход не произошёл, введите в поиске MAX: ${chatId}`;
-                log(`⚠️ Ручной переход: введите ID ${chatId} в поиск MAX`);
-            }, 2000);
+            // Пытаемся отправить сообщение через WebApp API
+            if (typeof window.WebApp !== 'undefined' && window.WebApp.sendMessage) {
+                try {
+                    await window.WebApp.sendMessage(messageText);
+                    log('✅ Сообщение отправлено через WebApp');
+                    statusEl.innerHTML = `✅ Готово! Возвращайтесь в чат для ответа.`;
+                    // Закрываем мини-приложение через 1.5 секунды
+                    setTimeout(() => {
+                        if (window.WebApp.close) window.WebApp.close();
+                    }, 1500);
+                } catch (err) {
+                    log('❌ Ошибка отправки: ' + err.message);
+                    statusEl.innerHTML = `❌ Ошибка: ${err.message}`;
+                    fallbackCopy(messageText);
+                }
+            } else {
+                // Fallback: копируем в буфер обмена
+                fallbackCopy(messageText);
+            }
+        }
+        
+        function fallbackCopy(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                log('📋 Текст скопирован в буфер обмена');
+                statusEl.innerHTML = `📋 Текст скопирован! Вставьте его в чат с ботом.`;
+            }).catch(err => {
+                log('❌ Не удалось скопировать: ' + err);
+                statusEl.innerHTML = `❌ Скопируйте вручную: ${text}`;
+            });
         }
         
         function renderStocks() {
@@ -91,18 +102,18 @@
             if (!container) return;
             
             container.innerHTML = STOCKS.map(stock => `
-                <div class="stock-card" data-chatid="${stock.chatId}" data-name="${stock.name}">
+                <div class="stock-card" data-name="${stock.name}" data-ticker="${stock.ticker}">
                     <h3>${stock.name}</h3>
                     <p>${stock.description}</p>
-                    <span class="badge">Войти в чат →</span>
+                    <span class="badge">Выбрать →</span>
                 </div>
             `).join('');
             
             document.querySelectorAll('.stock-card').forEach(card => {
                 card.addEventListener('click', () => {
-                    const chatId = card.dataset.chatid;
                     const name = card.dataset.name;
-                    openChat(chatId, name);
+                    const ticker = card.dataset.ticker;
+                    selectStock(name, ticker);
                 });
             });
         }
@@ -111,19 +122,17 @@
         function init() {
             log('🔧 Инициализация...');
             
-            // Проверяем, доступен ли WebApp (новое API MAX)
             if (typeof window.WebApp !== 'undefined') {
                 log('✅ MAX WebApp готов');
-                statusEl.innerHTML = '✅ Готово. Выберите инструмент.';
+                statusEl.innerHTML = '✅ Выберите инструмент';
             } else {
-                log('⚠️ WebApp не загружен, но переход через деплинк будет работать');
-                statusEl.innerHTML = '✅ Выберите инструмент (переход через ссылку)';
+                log('⚠️ WebApp не загружен');
+                statusEl.innerHTML = '⚠️ Работаем в режиме копирования';
             }
             
             renderStocks();
         }
         
-        // Запускаем после загрузки страницы
         window.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
