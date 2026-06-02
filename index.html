@@ -16,17 +16,17 @@
         .stock-card h3 { font-size: 18px; color: #333; margin-bottom: 4px; }
         .stock-card p { font-size: 13px; color: #666; }
         .badge { display: inline-block; background: #FF8C00; color: white; font-size: 11px; padding: 4px 12px; border-radius: 20px; margin-top: 8px; font-weight: 500; }
-        .status { text-align: center; padding: 16px; font-size: 14px; margin-top: 16px; }
-        .success { background: #d4edda; color: #155724; border-radius: 12px; }
-        .error { background: #f8d7da; color: #721c24; border-radius: 12px; }
+        .status { text-align: center; padding: 16px; font-size: 14px; color: #999; margin-top: 16px; }
+        .debug { background: #f0f0f0; padding: 12px; border-radius: 12px; font-size: 11px; color: #666; text-align: center; margin-top: 20px; font-family: monospace; word-break: break-all; }
         .note { background: #e3f2fd; padding: 12px; border-radius: 12px; font-size: 12px; color: #1565C0; text-align: center; margin-top: 20px; }
     </style>
+    <!-- ✅ ПРАВИЛЬНОЕ ПОДКЛЮЧЕНИЕ ПО ДОКУМЕНТАЦИИ MAX -->
     <script src="https://st.max.ru/js/max-web-app.js"></script>
 </head>
 <body>
     <div class="header">
         <h1>📊 Инвестиционный ассистент</h1>
-        <p>Выберите инструмент — сразу перейдёте в чат</p>
+        <p>Выберите инструмент для входа в чат анализа</p>
     </div>
     
     <div class="stocks-list" id="stocksList">
@@ -34,47 +34,55 @@
     </div>
     
     <div class="note">
-        🔄 Нажмите на карточку — откроется чат с экспертом по выбранному инструменту
+        ⚡ Нажмите на карточку, чтобы перейти в чат обсуждения
     </div>
     
-    <div class="status" id="status">Загрузка...</div>
+    <div class="status" id="status">Подключение...</div>
+    <div class="debug" id="debug"></div>
 
     <script>
-        // !!! ВАЖНО: ЗАМЕНИТЕ ЭТИ ССЫЛКИ НА ВАШИ РЕАЛЬНЫЕ ПРИГЛАСИТЕЛЬНЫЕ ССЫЛКИ !!!
+        // ⚠️ ВАШ РЕАЛЬНЫЙ ID ГРУППЫ (из логов бота)
         const STOCKS = [
             { 
                 ticker: "BTC_TREASURY", 
                 name: "🔹 Биткоин-казначейские облигации", 
                 description: "Структурный продукт, доходность обгоняет BTC",
-                inviteLink: "https://max.ru/join/QmkCfF0r5RPkmgw4UCANLs7tP-smXEl18XBQR43rnUU" // <-- ВСТАВЬТЕ ВАШУ ССЫЛКУ СЮДА
+                chatId: "-75427806028410"
             },
             { 
                 ticker: "SBER", 
                 name: "🔹 Сбербанк", 
                 description: "Акции крупнейшего банка РФ",
-                inviteLink: "https://max.ru/join/QmkCfF0r5RPkmgw4UCANLs7tP-smXEl18XBQR43rnUU" // <-- И СЮДА
+                chatId: "-75427806028410"
             }
         ];
         
+        const debugEl = document.getElementById('debug');
         const statusEl = document.getElementById('status');
         
-        function log(msg, type = 'info') {
+        function log(msg) {
             console.log(msg);
-            statusEl.textContent = msg;
-            statusEl.className = `status ${type}`;
+            if (debugEl) {
+                debugEl.innerHTML += msg + '\n';
+            }
         }
         
-        // ГЛАВНАЯ ФУНКЦИЯ — ОТКРЫТИЕ ЧАТА ПО ПРИГЛАСИТЕЛЬНОЙ ССЫЛКЕ
-        async function openChat(inviteLink, chatName) {
-            log(`🔄 Открываю чат "${chatName}"...`, 'success');
+        // Функция перехода в чат через деплинк (самый надёжный способ)
+        function openChat(chatId, chatName) {
+            log(`🚀 Переход в чат "${chatName}", ID: ${chatId}`);
+            statusEl.innerHTML = `⏳ Переход в чат "${chatName}"...`;
             
-            // Самый простой и надёжный способ: перенаправляем окно на пригласительную ссылку
-            // MAX перехватит этот переход и откроет чат внутри приложения
-            window.location.href = inviteLink;
+            // Формируем деплинк MAX
+            const deeplink = `max://chat/${chatId}`;
+            log(`🔗 Деплинк: ${deeplink}`);
             
-            // Резервный вариант на случай, если переход не произошёл
+            // Пытаемся открыть через window.location
+            window.location.href = deeplink;
+            
+            // Если через 2 секунды не ушли — показываем ID для ручного перехода
             setTimeout(() => {
-                log(`⚠️ Если переход не произошёл, откройте ссылку вручную: ${inviteLink}`, 'error');
+                statusEl.innerHTML = `⚠️ Если переход не произошёл, введите в поиске MAX: ${chatId}`;
+                log(`⚠️ Ручной переход: введите ID ${chatId} в поиск MAX`);
             }, 2000);
         }
         
@@ -83,28 +91,39 @@
             if (!container) return;
             
             container.innerHTML = STOCKS.map(stock => `
-                <div class="stock-card" data-link="${stock.inviteLink}" data-name="${stock.name}">
+                <div class="stock-card" data-chatid="${stock.chatId}" data-name="${stock.name}">
                     <h3>${stock.name}</h3>
                     <p>${stock.description}</p>
-                    <span class="badge">Перейти в чат →</span>
+                    <span class="badge">Войти в чат →</span>
                 </div>
             `).join('');
             
             document.querySelectorAll('.stock-card').forEach(card => {
                 card.addEventListener('click', () => {
-                    const inviteLink = card.dataset.link;
+                    const chatId = card.dataset.chatid;
                     const name = card.dataset.name;
-                    openChat(inviteLink, name);
+                    openChat(chatId, name);
                 });
             });
         }
         
         // Инициализация
         function init() {
-            log('🔧 Проверка подключения...', 'success');
+            log('🔧 Инициализация...');
+            
+            // Проверяем, доступен ли WebApp (новое API MAX)
+            if (typeof window.WebApp !== 'undefined') {
+                log('✅ MAX WebApp готов');
+                statusEl.innerHTML = '✅ Готово. Выберите инструмент.';
+            } else {
+                log('⚠️ WebApp не загружен, но переход через деплинк будет работать');
+                statusEl.innerHTML = '✅ Выберите инструмент (переход через ссылку)';
+            }
+            
             renderStocks();
         }
         
+        // Запускаем после загрузки страницы
         window.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
