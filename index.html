@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Выбор инструмента</title>
+    <title>Выбор продукта</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #f5f5f5; padding: 16px; }
@@ -11,12 +11,11 @@
         .header h1 { font-size: 24px; margin-bottom: 8px; }
         .header p { font-size: 14px; opacity: 0.9; }
         .stocks-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
-        .stock-card { background: white; border-radius: 16px; padding: 16px; cursor: pointer; transition: transform 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e0e0e0; }
+        .stock-card { background: white; border-radius: 16px; padding: 16px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e0e0e0; }
         .stock-card:active { transform: scale(0.98); background-color: #f9f9f9; }
         .stock-card h3 { font-size: 18px; color: #333; margin-bottom: 4px; }
         .stock-card p { font-size: 13px; color: #666; }
         .badge { display: inline-block; background: #FF8C00; color: white; font-size: 11px; padding: 4px 12px; border-radius: 20px; margin-top: 8px; font-weight: 500; }
-        .status { text-align: center; padding: 16px; font-size: 14px; margin-top: 16px; display: none; }
         .note { background: #e3f2fd; padding: 12px; border-radius: 12px; font-size: 12px; color: #1565C0; text-align: center; margin-top: 20px; }
     </style>
     <script src="https://st.max.ru/js/max-web-app.js"></script>
@@ -24,7 +23,7 @@
 <body>
     <div class="header">
         <h1>📊 Инвестиционный ассистент</h1>
-        <p>Выберите инструмент для анализа</p>
+        <p>Выберите продукт для консультации</p>
     </div>
     
     <div class="stocks-list" id="stocksList">
@@ -36,41 +35,49 @@
     </div>
 
     <script>
-        // ⚠️ ЗАМЕНИТЕ НА ВАШИ ПРИГЛАСИТЕЛЬНЫЕ ССЫЛКИ
-        const STOCKS = [
+        // ⚠️ ЗАМЕНИТЕ ССЫЛКИ НА ВАШИ РЕАЛЬНЫЕ ПРИГЛАСИТЕЛЬНЫЕ ССЫЛКИ
+        const PRODUCTS = [
             { 
-                ticker: "BTC_TREASURY", 
-                name: "🔹 Биткоин-казначейские облигации", 
+                id: "BTC_TREASURY", 
+                name: "🏦 Биткоин-казначейские облигации", 
                 description: "Структурный продукт, доходность обгоняет BTC",
-                inviteLink: "https://max.ru/join/QmkCfF0r5RPkmgw4UCANLs7tP-smXEl18XBQR43rnUU"  // ← ВАША ССЫЛКА
+                inviteLink: "https://max.ru/join/QmkCfF0r5RPkmgw4UCANLs7tP-smXEl18XBQR43rnUU"  // ← ЗАМЕНИТЕ
+            },
+            { 
+                id: "RIVER_RESIDENCES", 
+                name: "🏰 River Residences", 
+                description: "Премиальный жилой комплекс в Серебряном бору",
+                inviteLink: "https://max.ru/join/W42asjTw6c2_6L-lsVFwQxjd0_vtWM1pAd86vYLEAtw"  // ← ЗАМЕНИТЕ
             }
         ];
         
-        function openChat(inviteLink) {
-            // Просто переходим по ссылке — MAX сам разберётся
+        function openChat(inviteLink, productName) {
+            console.log(`Открываю чат для: ${productName}`);
             window.location.href = inviteLink;
         }
         
-        function renderStocks() {
+        function renderProducts() {
             const container = document.getElementById('stocksList');
             if (!container) return;
             
-            container.innerHTML = STOCKS.map(stock => `
-                <div class="stock-card" data-link="${stock.inviteLink}">
-                    <h3>${stock.name}</h3>
-                    <p>${stock.description}</p>
+            container.innerHTML = PRODUCTS.map(product => `
+                <div class="stock-card" data-link="${product.inviteLink}" data-name="${product.name}">
+                    <h3>${product.name}</h3>
+                    <p>${product.description}</p>
                     <span class="badge">Перейти в чат →</span>
                 </div>
             `).join('');
             
             document.querySelectorAll('.stock-card').forEach(card => {
                 card.addEventListener('click', () => {
-                    openChat(card.dataset.link);
+                    const inviteLink = card.dataset.link;
+                    const name = card.dataset.name;
+                    openChat(inviteLink, name);
                 });
             });
         }
         
-        renderStocks();
+        renderProducts();
     </script>
 </body>
 </html>
